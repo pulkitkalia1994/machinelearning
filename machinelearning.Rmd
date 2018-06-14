@@ -1,0 +1,72 @@
+---
+title: "machinelearning"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Fitness Tracker Analysis and prediction
+
+### Analysis done-
+The data was taken and only few columns were chosen for predicting the outcome( accelerometers on the belt, forearm, arm, and dumbell).
+
+
+#1. Reading the data and selecting only particular columns
+```{r }
+  library("rpart")
+  library("randomForest")
+  library("rpart.plot")
+  library("dplyr")
+  library("reshape2")
+  library("caret")
+  train<-read.csv("train.csv")
+  test<-read.csv("test.csv")
+
+  columns<-grep("*accel*",names(train),value = TRUE)
+  data<-select(train,columns)
+  data<-select(data,-c(var_total_accel_belt,var_accel_arm,var_accel_dumbbell,var_accel_forearm))
+  
+  classe<-train$classe
+  
+  
+  data<-cbind(data,classe=classe)
+```
+
+
+2.Plotting all the varibales against classe
+
+```{r}
+  df.m <- melt(data, "classe")
+  ggplot(df.m,aes(x=value,y=classe))+geom_point()+facet_wrap(~variable)
+```
+
+
+3. Trying different method for training-
+```{r}
+  ##setting number=5 dues to memory constraints
+  tr<-trainControl(method = "cv", number = 5)
+  cartGrid = expand.grid( .cp = seq(0.00002,0.002,0.00002))
+  model<-train(classe~.,data=data,method="rpart",trControl=tr,tuneGrid=cartGrid)
+  ##accuracy of 82% at cp=0.0002
+  prp(model$finalModel)
+  getTrainPerf(model)
+  
+  
+  ##randomForest accuracy ~94%
+  model2<-randomForest(classe~.,data=data)
+  predict(model2,newdata = test)
+  ##getTrainPerf(model2)
+  
+  
+  model3<-train(classe~.,data=data,method="rf",trControl=trainControl(method="cv",number=5))
+  ##accuracy of ~95% with cv
+  getTrainPerf(model3)
+```
+
+4. Selecting model with highest accuracy and predicting the test data with it-
+```{r}
+  predictionResults<-predict(model3,newdata = test)
+  print(predictionResults)
+```
